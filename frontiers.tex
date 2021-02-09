@@ -105,64 +105,57 @@ During simulation, a visual display of each population’s state is provided for
 
 \section{Introduction}
 
-\subsection{Population-level Modeling}
-MIIND allows the simulation of population dynamics
-for large groups of individual objects driven by deterministic dynamics but also subject to noise. The noise is usually assumed to be shot noise, but can be non-Markovian \citep{lai2017population}. 
+\subsection{Population-Level Modeling}
+Structures in the brain can be approximated by simple population networks based on the most common or likely connections between neurons. There are a great number of techniques to simulate the behaviour of neural populations.
+Techniques which simulate the individual behaviour of neurons such as is used in NEST \citep{Gewaltig:NEST}, or the custom hardware based neuromorphic system SpiNNaker \citep{9fed179f612a405b8801b67ef74bc737}, can simulate the most granular population models because neurons can be individually parameterised and connections can be heterogeneous. This is particularly useful for analysing information transfer such as edge detection in the visual cortex. They can also be used to analyse so called finite-size effects where population behaviour only occurs as a result of a specific realisation of individual neuron behaviour. There are, however, performance limitations on very large populations in terms of both computation speed and memory requirements for storing the spike history of each neuron. 
+At a less granular level, rate-based techniques are a widely used practice of modeling neural activity with a single variable, whose evolution is often described by a first-order ordinary differential equations, which goes back to \cite{wilson1972excitatory}. The Virtual Brain \citep{sanz2013virtual,jirsa2014nature} uses these types of models to represent activity of large regions (nodes) in whole brain networks to generate efficient simulations. The benefits of such an approach are clear in the clinical results demonstrated using TVB \citep{proix2017individual}. However, the link between individual neuron behaviour and population behaviour is often lost in this approach and models, therefore, lose their power to explain simulated behaviours at the microscopic level.
+Between these two extremes of granularity is a research area which bridges the scales by deriving population level behaviour from the behaviour of the underlying neurons. Recent work by \cite{carlu2020mean} shows how the transfer function of a neuron model or even an experimental neural recording can be used to approximate the response from a population. The response can be calculated analytically (although a numerical pre-procressing step is required) so the approach is highly efficient. Because of the reliance on the transfer function, however, populations of neurons with more complex behaviours, such as bursting, require a different technique. The software we present here, MIIND, allows the simulation of population dynamics for large groups of individual objects driven by deterministic dynamics but also subject to noise. The noise is usually assumed to be shot noise, but can be non-Markovian \citep{lai2017population}. 
 It contains a number of features that make it particularly suitable for dynamical systems representing neuronal dynamics, such as an adequate handling of boundary conditions that emerge from the presence of thresholds and reset mechanisms, but is not restricted to neural systems. The dynamical systems can be grouped in large networks, which can be seen as the model of a neural circuit at the population level.
+The key idea behind MIIND is shown in Fig. \ref{fig-cloud}. Here, a population of neurons is simulated. The state space for an individual neuron is two-dimensional, in this case a conductance based leaky-integrate-and-fire neuron with membrane potential and state of the conductance as the two variables. A neuron's evolution through state space is given by a two-dimensional dynamical system. The positions of individual neurons change in state space, both under the influence of the neuron's endogenous dynamics as determined by the dynamical system and of spike trains arriving from neurons in other populations, which cause rapid transitions in state space that are modeled as instantaneous jumps. For simulation techniques mentioned earlier in which the system is modelled directly by creating a large number of model neuron instances, a practice that we will refer to as Monte Carlo simulation, the population can be represented as a cloud of points in state space. The approach in MIIND, known as a population density technique (PDT) models the probability density of the cloud, shown in Fig. \ref{fig-cloud} as a heat map, rather than the behaviour of individual neurons. 
 
-The key idea behind MIIND is shown in Fig. \ref{fig-cloud}. Here, a population of neurons is simulated. The state space for an individual neuron is two-dimensional, in this case a conductance based leaky-integrate-and-fire neuron with membrane potential and state of the conductance as the two variables. A neuron's evolution through state space is given by a two-dimensional dynamical system. The positions of individual neurons change in state space, both under the influence of the neuron's endogenous dynamics as determined by the dynamical system and of spike trains arriving from neurons in other populations, which cause rapid transitions in state space that are modeled as instantaneous jumps. It is possible to model such a system directly by creating a large number of model neuron instances, a practice that we will refer to as Monte Carlo simulation. The population can be represented as a cloud of points in state space. Population density techniques (PDTs) model the probability density of the cloud, shown in Fig. \ref{fig-cloud} as a heat map, rather than the behaviour of individual neurons. 
+\subsection{The Case for Population Density Techniques} 
+Why use this technique?
+\cite{omurtag2000,nykamp2000population,kamps2003simple,iyer2013influence} have demonstrated that PDTs are much faster than Monte Carlo simulation for 1D models; \cite{de2019computational} have shown that while speed is comparable between 2D models and Monte Carlo, memory usage is orders of magnitude lower because no spikes need to be buffered, which accounts for significant memory use in large-scale simulations. In practice, this may make the difference between running a simulation on an HPC cluster or a single PC equipped with a general purpose graphics processing unit (GPGPU).
 
-The equation that describes the time evolution of the density is a partial integro-differential equation. We give it here to highlight some of its features, but for an in depth introduction to the formalism and a derivation of the central equations we refer to \cite{omurtag2000},
+Apart from simulation speed, PDTs have been important in understanding population level behaviour analytically. Important questions, such as `why are cortical networks stable?' \citep{amit1997model}, `how can a population be oscillatory when its constituent neurons fire sporadically?'
+\citep{brunel1999fast}, `how does spike shape influence the transmission spectrum of a population?'\citep{fourcaud2003spike} have been analysed in the context of population density techniques, providing insights that cannot be obtained from merely running simulations. A particularly important question, which has not been answered in full is: `how do rate-based equations emerge from populations of spiking neurons and when is their use appropriate?'.  There are many situations where such rate-based equations are appropriate, but some where they are not and their correspondence to the underlying spiking neural dynamics is not always clear \citep{montbrio2015macroscopic,de2013generic}. There is a body of work that suggests that rate-based equations can be seen as the lowest order of perturbations of the stationary state, and much of this work is PDT-based.
+
+These considerations show that PDTs provide a framework for the interpretation of neural dynamics beyond simulation. Many of these theoretical results cannot be used directly in the simulation of brain processes. MIIND opens the possibility to incorporate their insights into large-scale network models.\\
+
+\subsection{Population-level Modeling}
+
+The equation that describes the time evolution of the technique's probability density function is a partial integro-differential equation. We give it here to highlight some of its features, but for an in depth introduction to the formalism and a derivation of the central equations we refer to \cite{omurtag2000}.
+
 \begin{equation}                                        
   \frac{ \partial \rho }{ \partial t } + \frac{\partial}{ \partial \vec{v}} \cdot ( \frac{\vec{F}(\vec{v}) \rho(\vec{v},t)}{\tau} ) = \int_{M} d \vec{v}^{\prime} \left\{ W(\vec{v} \mid \vec{v}^{\prime})\rho(\vec{v'}) - W(\vec{v}^{\prime} \mid \vec{v}  )\rho(\vec{v}) \right\},
 \label{eq-balance}                                          
 \end{equation}  
-under the assumption that the neuronal dynamics of a point model neuron is given by:
+
+$\rho$ is the probability density function defined in terms of time, $t$, and time-dependent variables, $\vec{v}$, under the assumption that the neuronal dynamics of a point model neuron is given by:
+
 \begin{equation}
 \tau \frac{ d \vec{v}}{dt} = \vec{F}(\vec{v}), 
 \end{equation}
-where $\tau$ is the neuron's membrane time constant.
 
-Simple models are one-dimensional (1D). For the leaky-integrate-and-fire (LIF) neuron 
+where $\tau$ is the neuron's membrane time constant. Simple models are one-dimensional (1D). 
+For the leaky-integrate-and-fire (LIF) neuron: 
 \begin{equation}
 F(v) = -v,
 \end{equation}  
-for a quadratic-integrate-and-fire (QIF) neuron
+For a quadratic-integrate-and-fire (QIF) neuron:
 \begin{equation}
 F(v)= v^2 + I,
 \end{equation}  
-where $I$ can be interpreted as a bifurcation parameter. More complex models require a higher dimensional state space. Since
-such a space is hard to visualise and understand, considerable effort has been invested in the creation of effective models. In particular two-dimensional (2D) models are considered to be a compromise that allows considerably more biological realism than LIF or QIF neurons, but which remain amenable to visualisation and analysis, and can often be interpreted geometrically \citep{izhikevich2007dynamical}. Examples are the Izhikevich neuron
-\citep{izhikevich2003simple}, the Fitzhugh-Nagumo neuron \citep{fitzhugh1961impulses,nagumo1962active}, and the adaptive-exponential-integrate-and-fire neuron \citep{brette2005}, incorporating phenomena such as bursting, bifurcations, adaptation, and others that cannot be accounted for in a one dimensional model.
+where $I$ can be interpreted as a bifurcation parameter. More complex models require a higher dimensional state space. Since such a space is hard to visualise and understand, considerable effort has been invested in the creation of effective models. In particular two-dimensional (2D) models are considered to be a compromise that allows considerably more biological realism than LIF or QIF neurons, but which remain amenable to visualisation and analysis, and can often be interpreted geometrically \citep{izhikevich2007dynamical}. Examples are the Izhikevich neuron \citep{izhikevich2003simple}, the Fitzhugh-Nagumo neuron \citep{fitzhugh1961impulses,nagumo1962active}, and the adaptive-exponential-integrate-and-fire neuron \citep{brette2005}, incorporating phenomena such as bursting, bifurcations, adaptation, and others that cannot be accounted for in a one dimensional model.
 
-$W(v \mid v^{\prime})$ represents a transition probability rate function. The right hand side of Eq. \ref{eq-balance} corresponds to a Master equation. Any Markovian process can be represented by a suitable choice of $W$. For example,
-for shot noise, we have
+$W(v \mid v^{\prime})$ represents a transition probability rate function. The right hand side of Eq. \ref{eq-balance} corresponds to a Master equation. Any Markovian process can be represented by a suitable choice of $W$. For example, for shot noise, we have
 \begin{equation}   
 \label{master_equation}
   W(v^{\prime} \mid v) = \nu (\delta (v^{\prime} - v - h)  - \delta( v - v^{\prime})),  
 \end{equation}
-where $\nu$ is the rate of the Poisson process generating spike events. The delta functions reflect that an incoming spike causes a rapid change in state space, modeled as an instantaneous jump. It depends on the particular neural model
-in what variable the jumps take place. In LIF neurons with so-called delta synapses, the jump is in membrane potential
-so an input spike leads to an instantaneous jump in membrane potential. In conductance based models, the spike causes a
-jump in the conductance variable (Fig. \ref{fig-cloud}), and the influence of the incoming spike on the potential is then
-indirect, given by the dynamical system's response to the 
-sudden change in the conductance state.
+where $\nu$ is the rate of the Poisson process generating spike events. The delta functions reflect that an incoming spike causes a rapid change in state space, modeled as an instantaneous jump. It depends on the particular neural model in what variable the jumps take place. In LIF neurons with so-called delta synapses, the jump is in membrane potential so an input spike leads to an instantaneous jump in membrane potential. In conductance based models, the spike causes a jump in the conductance variable (Fig. \ref{fig-cloud}), and the influence of the incoming spike on the potential is then indirect, given by the dynamical system's response to the sudden change in the conductance state.
 
-MIIND is about the numerical solution of Eq. \ref{eq-balance} for
-arbitrary 1D, 2D or 3D versions of $\vec{F}(\vec{v})$, under a broad variety of noise processes. Indeed, the right hand side of Eq. \ref{eq-balance} can be generalised to non-Markov processes which cannot simply be formulated in terms of a transition probability rate function $W$. It is possible to introduce a right hand side that entails an integration over a past history of the density using a kernel whose shape is determined by the non-Markov process. See \cite{lai2017population} for an example of gamma distributed interspike intervals.\\
-
-\subsection{The Case for Population Density Techniques} 
-Why use this technique?
-\cite{omurtag2000,nykamp2000population,kamps2003simple,iyer2013influence} have demonstrated that PDTs are much faster than Monte Carlo simulation for 1D models; \cite{de2019computational} have shown that while speed is comparable between 2D models and Monte Carlo, memory usage is orders of magnitude lower compared
-because no spikes need to be buffered, which accounts for 
-significant memory use in large-scale simulations. In practice, this may make the difference between running a simulation on an HPC cluster or a single PC equipped with a general purpose graphics processing unit (GPGPU).
-
-Apart from simulation speed, PDTs have been important in understanding population level behaviour analytically. Important questions, such as `why are cortical networks
-stable?' \citep{amit1997model}, `how can a population be oscillatory when its constituent neurons fire sporadically?'
-\citep{brunel1999fast}, `how does spike shape influence the transmission spectrum of a population?'\citep{fourcaud2003spike} have been analysed in the context of population density techniques, providing insights that cannot be obtained from merely running simulations. A particularly important question, which has not been answered in full is: `how do rate-based equations emerge from populations of spiking neurons and when is their use appropriate?'. Rate-based equations refers to the widely used practice of modeling neural activity with a single variable, whose evolution is often described by a first-order ordinary differential equations, which goes back to \cite{wilson1972excitatory}. There are many situations where such rate-based equations are appropriate, but some where they are not and their correspondence to the underlying spiking neural dynamics is not always clear \citep{montbrio2015macroscopic,de2013generic}. There is a body of work that suggests that rate-based equations can be seen as the lowest order of perturbations of the stationary state, and much of this work is PDT-based.
-
-These considerations show that PDTs provide a framework for the interpretation of neural dynamics beyond simulation. Many of these theoretical results cannot be used directly in the simulation of brain processes. MIIND opens the possibility to incorporate their insights into large-scale network models.\\
-\\
+MIIND produces a numerical solution to Eq. \ref{eq-balance} for arbitrary 1D, 2D or 3D versions of $\vec{F}(\vec{v})$, under a broad variety of noise processes. Indeed, the right hand side of Eq. \ref{eq-balance} can be generalised to non-Markov processes which cannot simply be formulated in terms of a transition probability rate function $W$. It is possible to introduce a right hand side that entails an integration over a past history of the density using a kernel whose shape is determined by the non-Markov process. See \cite{lai2017population} for an example of gamma distributed interspike intervals.\\
 
 \subsection{Overview of MIIND’s Population Density Technique}
 \label{miindoverview}
