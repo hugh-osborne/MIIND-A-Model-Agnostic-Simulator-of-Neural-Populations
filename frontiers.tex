@@ -122,7 +122,7 @@ The time evolution of the technique's probability density function is described 
 \label{eq-balance}                                          
 \end{equation}  
 
-$\rho$ is the probability density function defined in terms of time, $t$, and time-dependent variables, $\vec{v}$, under the assumption that the neuronal dynamics of a point model neuron is given by:
+$\rho$ is the probability density function defined over a volume of state space, $M$, in terms of time, $t$, and time-dependent variables, $\vec{v}$, under the assumption that the neuronal dynamics of a point model neuron is given by:
 
 \begin{equation}
 \tau \frac{ d \vec{v}}{dt} = \vec{F}(\vec{v}), 
@@ -137,14 +137,14 @@ For a quadratic-integrate-and-fire (QIF) neuron:
 \begin{equation}
 F(v)= v^2 + I,
 \end{equation}  
-where $I$ can be interpreted as a bifurcation parameter. More complex models require a higher dimensional state space. Since such a space is hard to visualise and understand, considerable effort has been invested in the creation of effective models. In particular two-dimensional (2D) models are considered to be a compromise that allows considerably more biological realism than LIF or QIF neurons, but which remain amenable to visualisation and analysis, and can often be interpreted geometrically \citep{izhikevich2007dynamical}. Examples are the Izhikevich simple neuron \citep{izhikevich2003simple}, the Fitzhugh-Nagumo neuron \citep{fitzhugh1961impulses,nagumo1962active}, and the adaptive-exponential-integrate-and-fire neuron \citep{brette2005}, incorporating phenomena such as bursting, bifurcations, adaptation, and others that cannot be accounted for in a one dimensional model.
+where $v$ is the membrane potential, and $I$ can be interpreted as a bifurcation parameter. More complex models require a higher dimensional state space. Since such a space is hard to visualise and understand, considerable effort has been invested in the creation of effective models. In particular two-dimensional (2D) models are considered to be a compromise that allows considerably more biological realism than LIF or QIF neurons, but which remain amenable to visualisation and analysis, and can often be interpreted geometrically \citep{izhikevich2007dynamical}. Examples are the Izhikevich simple neuron \citep{izhikevich2003simple}, the Fitzhugh-Nagumo neuron \citep{fitzhugh1961impulses,nagumo1962active}, and the adaptive-exponential-integrate-and-fire neuron \citep{brette2005}, incorporating phenomena such as bursting, bifurcations, adaptation, and others that cannot be accounted for in a one dimensional model.
 
 $W(v \mid v^{\prime})$ in Eq. \ref{eq-balance} represents a transition probability rate function. The right hand side of Eq. \ref{eq-balance} makes it a Master equation. Any Markovian process can be represented by a suitable choice of $W$. For example, for shot noise, we have
 \begin{equation}   
 \label{master_equation}
   W(v^{\prime} \mid v) = \nu (\delta (v^{\prime} - v - h)  - \delta( v - v^{\prime})),  
 \end{equation}
-where $\nu$ is the rate of the Poisson process generating spike events. The delta functions reflect that an incoming spike causes a rapid change in state space, modeled as an instantaneous jump. It depends on the particular neural model in what variable the jumps take place. Often models use a so-called delta synapse, such that the jump is in membrane potential. In conductance based models, the incoming spike causes a jump in the conductance variable (Fig. \ref{fig-cloud}A), and the influence of the incoming spike on the potential is then indirect, given by the dynamical system's response to the sudden change in the conductance state.
+where $\nu$ is the rate of the Poisson process generating spike events. The delta functions reflect that an incoming spike causes a rapid change in state space, modeled as an instantaneous jump, $h$. It depends on the particular neural model in what variable the jumps take place. Often models use a so-called delta synapse, such that the jump is in membrane potential. In conductance based models, the incoming spike causes a jump in the conductance variable (Fig. \ref{fig-cloud}A), and the influence of the incoming spike on the potential is then indirect, given by the dynamical system's response to the sudden change in the conductance state.
 
 MIIND produces a numerical solution to Eq. \ref{eq-balance} for arbitrary 1D or 2D versions of $\vec{F}(\vec{v})$ (support for 3D versions is in development), under a broad variety of noise processes. Indeed, the right hand side of Eq. \ref{eq-balance} can be generalised to non-Markov processes which cannot simply be formulated in terms of a transition probability rate function $W$. It is possible to introduce a right hand side that entails an integration over a past history of the density using a kernel whose shape is determined by a non-Markov process \citep{lai2017population}.\\
 
@@ -761,7 +761,7 @@ The authors declare that the research was conducted in the absence of any commer
 
 \section*{Author Contributions}
 
-The Author Contributions section is mandatory for all articles, including articles by sole authors. If an appropriate statement is not provided on submission, a standard one will be inserted during the production process. The Author Contributions statement must describe the contributions of individual authors referred to by their initials and, in doing so, all authors agree to be accountable for the content of the work. Please see  \href{http://home.frontiersin.org/about/author-guidelines#AuthorandContributors}{here} for full authorship criteria.
+HO and MdK contributed to the text of this article. YML, MEL, DS, and LD contributed to the development of the population density technique and MIIND software.\\  
 
 \section*{Funding}
 This project received funding from the European Union’s Horizon 2020 research and innovation programme under Grant Agreement No. 720270 (HBP SGA1) and Specific Grant Agreement No. 785907 (Human Brain Project SGA2) (MdK; YML). HO is funded by EPSRC. The funders had no role in study design, data collection and analysis, decision to publish, or preparation of the manuscript.
