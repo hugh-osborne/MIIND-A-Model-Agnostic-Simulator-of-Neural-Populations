@@ -519,7 +519,7 @@ Other combinations of attributes for connections using CustomConnectionParameter
 
 \subsection{SimulationRunParameter}
 
-The \textit{\textless SimulationRunParameter\textgreater} block contains parameter settings for the simulation as a whole. The sub-elements listed in Table \ref{tab:simulationparameters} are required for a full definition. Although all four sub-elements are fairly self explanatory, \textit{t\_step} has the limitation that it must match or be an integer multiple of all time steps defined by any MeshAlgorithm and GridAlgorithm instances. \\
+The \textit{\textless SimulationRunParameter\textgreater} block contains parameter settings for the simulation as a whole. The sub-elements listed in Table \ref{tab:simulationparameters} are required for a full definition. Although most of the sub-elements are self explanatory, \textit{t\_step} has the limitation that it must match or be an integer multiple of all time steps defined by any MeshAlgorithm and GridAlgorithm instances. \textit{master\_steps} is used only for the GPGPU implementation of MIIND (section \ref{mainmiindgpu}). It allows the user to set the number of Euler iterations per time step to solve the master equation. By default, the value is 10. However, to improve accuracy or to avoid blow-up in the case where the time step is too large or the local dynamics are unstable, \textit{master\_steps} should be increased. \\
 
 \subsection{Reporting}
 
@@ -550,6 +550,7 @@ All values in a MIIND XML script can be set with a variable name. The type of th
 \end{lstlisting}
 
 \section{MIIND on the GPU}
+\label{mainmiindgpu}
 The population density techniques of the mesh and grid algorithms rely on multiple applications of the transition matrix which can be performed on each cell in parallel. This makes the algorithms prime candidates for parallelisation on the graphics card. In the CPU versions, the probability mass is stored in separate arrays, one for each population/node in the simulation. For the GPGPU version, these are concatenated into one large probability mass vector so all cells in all populations can be processed in parallel. From the user’s perspective, switching between CPU and GPU implementations is trivial. In the XML file for a simulation which uses MeshAlgorithm or GridAlgoirithm, to switch to the vectorised GPU version, the Algorithm types must be changed to MeshAlgorithmGroup and GridAlgorithmGroup. All other attributes remain the same. Only MeshAlgorithmGroup, GridAlgorithmGroup, and RateFunctor/RateAlgorithm types can be used for a vectorised simulation. When running a MIIND simulation containing a group algorithm from a Python script, instead of importing \textit{miind.miindsim}, \textit{miind.miindsimv} should be used. The Python module \textit{miind.run} is agnostic to the use of group algorithms so can be used as shown previously.
 
 \begin{lstlisting}[language=xml,caption={A MeshAlgorithmGroup definition is identical to a MeshAlgorithm definition except for the type.}]
@@ -563,6 +564,8 @@ The population density techniques of the mesh and grid algorithms rely on multip
 </Algorithm>
 \end{lstlisting}
 
+The GPGPU implementation uses the Euler method to solve the master process during each iteration. It is, therefore, susceptible to blow-up if the time step is large or if the local dynamics of the model are stiff. The user has the option to set the number of euler steps taken each iteration using the \textit{master\_steps} value of the SimulationRunParameter block in the XML file. A higher value reduces the likelihood of blow-up but increases the simulation time. \\
+ 
 In order to run the vectorised simulations, MIIND must be running on a CUDA enabled machine and have CUDA enabled in the installation (CUDA is supported in the Windows and Linux python installations). Section \ref{cudaimplement} in the supplementary material goes into greater detail about the systems architecture differences between the CPU and GPU versions of the MIIND code. Using the ``Group'' algorithms is recommended if possible as it provides a significant performance increase. Benchmarking details for MIIND compared to direct simulation are available in \cite{de2019computational}.\\
 
 \section{Running a MIIND Simulation in Python}
@@ -697,11 +700,14 @@ As with the population models in MPILib and GeomLib, GridAlgorithm and MeshAlgor
 
 First, in GridAlgorithm, the deterministic dynamics are solved by applying the pre-generated transition matrix once. The second step is a call to \textit{Ode2DSystem.RedistributeProbability()} to perform any reset mappings for probability mass which appeared in the threshold cells last iteration. This step is useful for neuron models, such as leaky integrate and fire, which contain an instruction to reset one or more variables to a different value upon reaching a threshold.\\
 
-The third step calls on the MasterGrid class to solve the master equation for the incoming Poisson spike rates from every incident node. MasterGrid begins with the current state of the probability mass distribution across the grid, that is, the probability mass values of each cell in the grid. As described in section \ref{gridalgorithm}, every cell has the same relative transition of probability mass due to a single incoming spike. For the whole grid, this single transition is duplicated into a transition matrix which can be applied to the full probability mass vector. Because there are at most two cells into which probability mass is transferred, this matrix is extremely sparse and can be stored efficiently in a compressed sparse row (CSR) matrix. In the mesh algorithm, this matrix is loaded from the \textit{.mat} file. The change to the probability mass distribution, $\rho$, is defined as \\
+The third step calls on the MasterGrid class to solve the master equation for the incoming Poisson spike rates from every incident node. MasterGrid begins with the current state of the probability mass distribution across the grid, that is, the probability mass values of each cell in the grid. As described in section \ref{gridalgorithm}, every cell has the same relative transition of probability mass due to a single incoming spike. For the whole grid, this single transition is duplicated into a transition matrix which can be applied to the full probability mass vector. Because there are at most two cells into which probability mass is transferred, this matrix is extremely sparse and can be stored efficiently in a compressed sparse row (CSR) matrix. In the mesh algorithm, this matrix is loaded from the \textit{.mat} file. The change to the probability mass distribution, $\rho$, is defined in equation \ref{eq:masterprocess}.
 
-$d\rho/dt = \lambda M \rho \\$
+\begin{equation}  
+d\rho/dt = \lambda M \rho \\
+\label{eq:masterprocess}
+\end{equation}
 
-where $\lambda$ is the incoming Poisson firing rate and $M$ is the transition matrix. The boost numeric library is used to integrate $d\rho/dt$. The solution to this equation describes the spread of the population due to Poisson spikes. This `master process' step is where the majority of time is taken computationally. However, OpenMP is available in MIIND to parallelise the matrix multiplication. If multiple cores are available, the OpenMP implementation significantly improves performance of the master process step.\\
+$\lambda$ is the incoming Poisson firing rate and $M$ is the transition matrix. The boost numeric library is used to integrate $d\rho/dt$. The solution to this equation describes the spread of the population due to Poisson spikes. This `master process' step is where the majority of time is taken computationally. However, OpenMP is available in MIIND to parallelise the matrix multiplication. If multiple cores are available, the OpenMP implementation significantly improves performance of the master process step.\\
 
 MeshAlgorithm requires a fourth step to transfer probability mass from the ends of strips to stationary cells subject to a reversal mapping generated during the pre-processing phase. This is discussed in the supplementary material section \ref{suppl:meshbuilding}.\\
 
@@ -881,6 +887,7 @@ Documentation is available at \url{https://miind.readthedocs.io/}.
     \textit{t\_end} & The simulation end time.\\
     \textit{t\_step} & The time step of the simulation.\\
     \textit{name\_log} & A file name for logging. The file is stored in the output directory of the simulation.\\
+	\textit{master\_steps} & The number of Euler iterations per time step used to solve the mater equation in the GPGPU implementation. \\
     \hline
     \end{tabular}
 \label{tab:simulationparameters}
