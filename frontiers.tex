@@ -108,23 +108,24 @@ The key idea behind MIIND is shown in Fig. \ref{fig-cloud}A. Here, a population 
 
 \begin{equation}
 \begin{aligned}
-\tau_m &\frac{dv}{dt} = -(v - E_r) - hv, \\
-\tau_s &\frac{dh}{dt} = -h
+\tau &\frac{dV}{dt} = -g_l(V - E_l) - g_e(t)V, \\
+\tau_e &\frac{dg_e}{dt} = -g_e + I_{syn}(t)
 \label{eq-cond}
 \end{aligned}
 \end{equation}
 
-$v$ is the membrane potential and $h$ is the conductance variable. $E_r$ is the resting potential and $tau_m$ and $tau_s$ represent the time scales for $v$ and $h$ respectively. If $v$ is raised above a specified threshold value, it is reset to a specified reset membrane potential.
+$V$ is the membrane potential and $g_e$ is the conductance variable. $E_l$ (set to -65mV in this example) is the reversal potential and $tau$ (20ms) and $tau_e$ (5ms) represent the time scales for $V$ and $g_e$ respectively. $I_{syn}$ represents changes to the conductance variable due to incoming spikes. If $V$ is raised above a specified threshold value (-55mV), it is reset to a specified reset membrane potential (-65mV).
 The positions of individual neurons change in state space, both under the influence of the neuron's endogenous dynamics as determined by the dynamical system and of spike trains arriving from neurons in other populations, which cause rapid transitions in state space that are modeled as instantaneous jumps. For the simulation techniques mentioned earlier involving a large number of individual model neuron instances, a practice that we will refer to as Monte Carlo simulation, the population can be represented as a cloud of points in state space. The approach in MIIND, known as a population density technique (PDT) models the probability density of the cloud, shown in Fig. \ref{fig-cloud} as a heat map, rather than the behaviour of individual neurons. The threshold and reset values of the underlying neuron model are visible in the hard vertical edges of the density in Fig. \ref{fig-cloud}A. In Fig. \ref{fig-cloud}B, the same simulation approach is used for a population of Fitzhugh-Nagumo neurons \citep{fitzhugh1961impulses,nagumo1962active}. The dynamical system is defined in Eq. \ref{eq-fn}. 
+
 \begin{equation}
 \begin{aligned}
-&\frac{dV}{dt} = V - \frac{V^3}{\theta} - W, \\
-&\frac{dW}{dt} = a(bV + cW)
+&\frac{dV}{dt} = V - \frac{V^3}{3} - W, \\
+&\frac{dW}{dt} = 0.08(V + 0.7 - 0.8W)
 \label{eq-fn}
 \end{aligned}
 \end{equation}
 
-$V$ represents the membrane potential and $V$ is a recovery variable, both in arbitrary units. $\theta$, $a$, $b$, and $c$ are constant parameters. The Fitzhugh-Nagumo model has no threshold-reset mechanism and so there are no vertical boundaries to the density. As well as being informative in themselves, common population metrics such as average firing rate and average membrane potential can be quickly calculated from these density functions. The MIIND model archive, available in the code repository, contains example simulation files for populations of both conductance based neurons and Fitzhugh-Nagumo neurons (\textit{examples/model\_archive/Conductance2D} and \textit{examples/model\_archive/FitzhughNagumo}).
+$V$ represents the membrane potential and $W$ is a recovery variable. The Fitzhugh-Nagumo model has no threshold-reset mechanism and so there are no vertical boundaries to the density. As well as being informative in themselves, common population metrics such as average firing rate and average membrane potential can be quickly calculated from these density functions. The MIIND model archive, available in the code repository, contains example simulation files for populations of both conductance based neurons and Fitzhugh-Nagumo neurons (\textit{examples/model\_archive/Conductance2D} and \textit{examples/model\_archive/FitzhughNagumo}).
 
 \subsection{The Case for Population Density Techniques} 
 Why use this technique?
